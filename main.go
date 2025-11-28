@@ -7,32 +7,33 @@ import (
 	"github.com/eetmad/backend/database"
 	"github.com/eetmad/backend/models"
 	"github.com/eetmad/backend/routes"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
 func main() {
+	// تحميل المتغيرات من .env
 	godotenv.Load()
+
+	// الاتصال بقاعدة البيانات
 	database.Connect()
+
+	// إنشاء الجداول تلقائيًا
 	database.DB.AutoMigrate(&models.User{})
 
+	// إعداد Gin
 	r := gin.Default()
 
-	// Add CORS middleware
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"}, // Change to your domain in production
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-	}))
+	// جميع الروتات
+	api := r.Group("/api/v1")
+	routes.AuthRoutes(api)
 
-	routes.RegisterRoutes(r)
+	// تشغيل السيرفر
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("API شغال 100%% على http://localhost:%s", port)
+
+	log.Printf("Eetmad Backend شغال 100%% على http://localhost:%s", port)
 	log.Fatal(r.Run(":" + port))
 }
