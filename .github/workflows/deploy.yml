@@ -1,0 +1,35 @@
+name: Deploy Backend to Production
+
+on:
+  push:
+   branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH to AWS EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AWS_EC2_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "Pulling latest backend code..."
+            cd /home/ubuntu/eetmad/backend
+            git fetch --all
+            git reset --hard origin/main
+            git clean -fd
+            
+            echo "Writing .env file...
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" > .env
+            echo "DATABASE_URL=postgresql://eetmad_user:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/eetmad_prod?sslmode=disable" >> .env
+            echo "PORT=8080" >> .env
+            
+            echo "Restarting containers..."
+            cd /home/ubuntu/eetmad
+            docker compose up -d --build api db
+            
+            echo "Backend deployed successfully at $(date)"
