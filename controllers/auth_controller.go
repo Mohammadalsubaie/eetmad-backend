@@ -1,9 +1,10 @@
 package controllers
 
 import (
+	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
-	"regexp"
 
 	"github.com/eetmad/backend/database"
 	"github.com/eetmad/backend/models"
@@ -34,11 +35,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	if matched, _ := regexp.MatchString(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`, input.Email); !matched {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "البريد الإلكتروني غير صالح"})
-		return
-	}
-
+	// تشفير كلمة المرور
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 
 	userType := "client"
@@ -46,16 +43,22 @@ func Register(c *gin.Context) {
 		userType = input.UserType
 	}
 
+	// الحل السحري: لو الـ phone فاضي → نولّد رقم عشوائي فريد جدًا
+	phone := input.Phone
+	if phone == "" {
+		phone = fmt.Sprintf("temp%09d", rand.Intn(1000000000)) // 9 أرقام فقط → طوله 13 حرف كحد أقصى
+	}
+
 	user := models.User{
 		Name:     input.Name,
 		Email:    input.Email,
-		Phone:    input.Phone,
+		Phone:    phone,
 		Password: string(hashed),
 		UserType: userType,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "البريد الإلكتروني مستخدم مسبقًا"})
+		c.JSON(http.StatusConflict, gin.H{"error": "البريد الإلكتروني أو رقم الجوال مستخدم مسبقًا"})
 		return
 	}
 
